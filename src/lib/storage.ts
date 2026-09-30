@@ -4,6 +4,7 @@ const STORAGE_KEY = 'shukkin-calendar-v1'
 
 export type StoredPrefs = {
   themeId: ThemeId
+  customColor: string
   name: string
   shop: string
   calendarHeight: number
@@ -13,6 +14,7 @@ export type StoredPrefs = {
 
 export const DEFAULT_PREFS: StoredPrefs = {
   themeId: 'sakura',
+  customColor: '#e39bae',
   name: '',
   shop: '',
   calendarHeight: 0.42,
@@ -20,13 +22,22 @@ export const DEFAULT_PREFS: StoredPrefs = {
   photoOffset: 0.5,
 }
 
+const THEME_IDS: ThemeId[] = ['sakura', 'blue', 'gold', 'purple', 'mint', 'custom']
+
 export function loadPrefs(): StoredPrefs {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { ...DEFAULT_PREFS }
     const parsed = JSON.parse(raw) as Partial<StoredPrefs>
+    const themeId = THEME_IDS.includes(parsed.themeId as ThemeId)
+      ? (parsed.themeId as ThemeId)
+      : DEFAULT_PREFS.themeId
     return {
-      themeId: parsed.themeId ?? DEFAULT_PREFS.themeId,
+      themeId,
+      customColor:
+        typeof parsed.customColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(parsed.customColor)
+          ? parsed.customColor
+          : DEFAULT_PREFS.customColor,
       name: parsed.name ?? '',
       shop: parsed.shop ?? '',
       calendarHeight: clamp(parsed.calendarHeight ?? DEFAULT_PREFS.calendarHeight, 0.28, 0.62),

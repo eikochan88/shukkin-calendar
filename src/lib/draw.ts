@@ -13,6 +13,7 @@ export type DrawOptions = {
   theme: Theme
   year: number
   month: number // 1-12
+  monthTitle: string // e.g. SEPTEMBER（自由入力可）
   workDays: Set<number>
   name: string
   shop: string
@@ -27,6 +28,7 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
     theme,
     year,
     month,
+    monthTitle,
     workDays,
     name,
     shop,
@@ -80,14 +82,15 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
   // Calendar block
   const blockY = CANVAS_H * calendarHeight
 
-  // Month name (e.g. MARCH)
+  // Month name (e.g. MARCH) — 自由入力の英語タイトル
+  const titleText = monthTitle.trim() || MONTH_NAMES[month - 1]
   ctx.save()
   ctx.font = `400 66px ${SERIF}`
   ctx.fillStyle = '#ffffff'
   ctx.textBaseline = 'alphabetic'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
   ctx.shadowBlur = 10
-  fillTextSpaced(ctx, MONTH_NAMES[month - 1], CANVAS_W / 2, blockY, 8, 'center')
+  fillTextSpaced(ctx, titleText, CANVAS_W / 2, blockY, 8, 'center')
   ctx.restore()
 
   // CALENDAR

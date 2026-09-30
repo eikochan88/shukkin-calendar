@@ -12,8 +12,10 @@ import { loadPrefs, savePrefs } from './lib/storage'
 import {
   CANVAS_H,
   CANVAS_W,
+  MONTH_NAMES,
   THEMES,
   getTheme,
+  themeFromColor,
   type ThemeId,
 } from './lib/themes'
 
@@ -27,11 +29,17 @@ function weekdaysInMonth(year: number, month: number): Set<number> {
   return days
 }
 
+function shiftMonth(year: number, month: number, delta: number) {
+  const d = new Date(year, month - 1 + delta, 1)
+  return { year: d.getFullYear(), month: d.getMonth() + 1 }
+}
+
 function App() {
   const prefs = useMemo(() => loadPrefs(), [])
   const now = useMemo(() => new Date(), [])
 
   const [themeId, setThemeId] = useState<ThemeId>(prefs.themeId)
+  const [customColor, setCustomColor] = useState(prefs.customColor)
   const [name, setName] = useState(prefs.name)
   const [shop, setShop] = useState(prefs.shop)
   const [calendarHeight, setCalendarHeight] = useState(prefs.calendarHeight)
@@ -39,6 +47,9 @@ function App() {
   const [photoOffset, setPhotoOffset] = useState(prefs.photoOffset)
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
+  const [monthTitle, setMonthTitle] = useState<string>(
+    () => MONTH_NAMES[now.getMonth()],
+  )
   const [workDays, setWorkDays] = useState<Set<number>>(() => new Set())
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
@@ -53,7 +64,8 @@ function App() {
   const fileRef = useRef<HTMLInputElement>(null)
   const saveResultRef = useRef<HTMLElement>(null)
 
-  const theme = getTheme(themeId)
+  const theme = getTheme(themeId, customColor)
+  const customPreview = themeFromColor(customColor)
   const daysInMonth = new Date(year, month, 0).getDate()
   const firstDow = new Date(year, month - 1, 1).getDay()
 
@@ -61,17 +73,19 @@ function App() {
   useEffect(() => {
     savePrefs({
       themeId,
+      customColor,
       name,
       shop,
       calendarHeight,
       darkness,
       photoOffset,
     })
-  }, [themeId, name, shop, calendarHeight, darkness, photoOffset])
+  }, [themeId, customColor, name, shop, calendarHeight, darkness, photoOffset])
 
-  // Reset work days when year/month changes
+  // Reset work days + English month title when year/month changes
   useEffect(() => {
     setWorkDays(new Set())
+    setMonthTitle(MONTH_NAMES[month - 1])
   }, [year, month])
 
   // Draw preview
@@ -84,6 +98,7 @@ function App() {
       theme,
       year,
       month,
+      monthTitle,
       workDays,
       name,
       shop,
@@ -96,6 +111,7 @@ function App() {
     theme,
     year,
     month,
+    monthTitle,
     workDays,
     name,
     shop,
@@ -144,6 +160,12 @@ function App() {
     })
   }
 
+  const goMonth = (delta: number) => {
+    const next = shiftMonth(year, month, delta)
+    setYear(next.year)
+    setMonth(next.month)
+  }
+
   const handleSave = async () => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -152,7 +174,6 @@ function App() {
     setStatusMsg(null)
     try {
       const result = await saveCanvasImage(canvas)
-      // 共有成功時も含め、常に長押し用画像を出す（失敗時の保険）
       if (result.dataUrl) setSaveImageUrl(result.dataUrl)
       if (result.message) setStatusMsg(result.message)
       if (result.error) setErrorMsg(result.error)
@@ -171,7 +192,7 @@ function App() {
 
   const years = useMemo(() => {
     const y = now.getFullYear()
-    return [y - 1, y, y + 1]
+    return [y - 1, y, y + 1, y + 2]
   }, [now])
 
   const cells: (number | null)[] = []
@@ -190,7 +211,6 @@ function App() {
         </p>
       </header>
 
-      {/* Preview */}
       <section className="mb-5 flex flex-col items-center">
         <canvas
           ref={canvasRef}
@@ -201,7 +221,72 @@ function App() {
         />
       </section>
 
-      {/* Photo */}
+      <Panel title="年月">
+        <div className="mb-3 flex items-center gap-2">
+          <button
+            type="button"
+            className="flex min-h-12 min-w-12 items-center justify-center rounded-lg border border-[#2f2d3a] bg-[#14131a] text-[22px]"
+            onClick={() => goMonth(-1)}
+            aria-label="前の月"
+          >
+            ‹
+          </button>
+          <div className="flex-1 text-center text-[18px] font-medium tracking-wide text-[#efedf5]">
+            {year}年 {month}月
+          </div>
+          <button
+            type="button"
+            className="flex min-h-12 min-w-12 items-center justify-center rounded-lg border border-[#2f2d3a] bg-[#14131a] text-[22px]"
+            onClick={() => goMonth(1)}
+            aria-label="次の月"
+          >
+            ›
+          </button>
+        </div>
+        <div className="flex gap-3">
+          <label className="flex min-h-11 flex-1 items-center gap-2">
+            <span className="text-[13px] text-[#9b97a8]">年</span>
+            <select
+              className="min-h-11 flex-1 rounded-lg border border-[#2f2d3a] bg-[#14131a] px-3 text-[#efedf5]"
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+            >
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex min-h-11 flex-1 items-center gap-2">
+            <span className="text-[13px] text-[#9b97a8]">月</span>
+            <select
+              className="min-h-11 flex-1 rounded-lg border border-[#2f2d3a] bg-[#14131a] px-3 text-[#efedf5]"
+              value={month}
+              onChange={(e) => setMonth(Number(e.target.value))}
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>
+                  {m}月
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <label className="mt-3 block">
+          <span className="mb-1 block text-[13px] text-[#9b97a8]">
+            英語の月名（画像上の SEPTEMBER など）
+          </span>
+          <input
+            type="text"
+            value={monthTitle}
+            onChange={(e) => setMonthTitle(e.target.value.toUpperCase())}
+            placeholder="SEPTEMBER"
+            className="min-h-11 w-full rounded-lg border border-[#2f2d3a] bg-[#14131a] px-3 tracking-[0.12em] text-[#efedf5] outline-none placeholder:text-[#5c5868]"
+          />
+        </label>
+      </Panel>
+
       <Panel title="写真">
         <div className="flex gap-2">
           <button
@@ -244,41 +329,6 @@ function App() {
         />
       </Panel>
 
-      {/* Year / Month */}
-      <Panel title="年月">
-        <div className="flex gap-3">
-          <label className="flex min-h-11 flex-1 items-center gap-2">
-            <span className="text-[13px] text-[#9b97a8]">年</span>
-            <select
-              className="min-h-11 flex-1 rounded-lg border border-[#2f2d3a] bg-[#14131a] px-3 text-[#efedf5]"
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-            >
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex min-h-11 flex-1 items-center gap-2">
-            <span className="text-[13px] text-[#9b97a8]">月</span>
-            <select
-              className="min-h-11 flex-1 rounded-lg border border-[#2f2d3a] bg-[#14131a] px-3 text-[#efedf5]"
-              value={month}
-              onChange={(e) => setMonth(Number(e.target.value))}
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>
-                  {m}月
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </Panel>
-
-      {/* Day picker */}
       <Panel title="出勤日">
         <div className="mb-3 flex gap-2">
           <button
@@ -327,7 +377,6 @@ function App() {
         </div>
       </Panel>
 
-      {/* Text */}
       <Panel title="テキスト（任意）">
         <label className="mb-3 block">
           <span className="mb-1 block text-[13px] text-[#9b97a8]">名前</span>
@@ -351,9 +400,8 @@ function App() {
         </label>
       </Panel>
 
-      {/* Theme */}
-      <Panel title="カラーテーマ">
-        <div className="flex flex-wrap justify-center gap-4 py-1">
+      <Panel title="全体の色">
+        <div className="flex flex-wrap justify-center gap-3 py-1">
           {THEMES.map((t) => (
             <button
               key={t.id}
@@ -370,10 +418,38 @@ function App() {
               }}
             />
           ))}
+          <button
+            type="button"
+            title="カスタム"
+            aria-label="カスタム色"
+            aria-pressed={themeId === 'custom'}
+            onClick={() => setThemeId('custom')}
+            className="flex h-12 w-12 items-center justify-center rounded-full border-2 text-[11px] font-medium text-[#efedf5] transition-transform active:scale-95"
+            style={{
+              background: `linear-gradient(135deg, ${customPreview.main}, ${customPreview.accent})`,
+              borderColor: themeId === 'custom' ? '#efedf5' : '#2f2d3a',
+              boxShadow:
+                themeId === 'custom' ? `0 0 0 3px ${customColor}55` : undefined,
+            }}
+          >
+            自由
+          </button>
         </div>
+        <label className="mt-3 flex min-h-11 items-center gap-3">
+          <span className="text-[13px] text-[#9b97a8]">好きな色</span>
+          <input
+            type="color"
+            value={customColor}
+            onChange={(e) => {
+              setCustomColor(e.target.value)
+              setThemeId('custom')
+            }}
+            className="h-11 w-16 cursor-pointer rounded-lg border border-[#2f2d3a] bg-[#14131a] p-1"
+          />
+          <span className="font-mono text-[13px] text-[#cfcadb]">{customColor}</span>
+        </label>
       </Panel>
 
-      {/* Calendar height */}
       <Panel title="カレンダーの高さ">
         <Slider
           label="顔にかぶらないよう調整"
@@ -390,7 +466,6 @@ function App() {
         </p>
       )}
 
-      {/* Save */}
       <button
         type="button"
         onClick={handleSave}

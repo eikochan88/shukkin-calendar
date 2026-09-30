@@ -1,4 +1,4 @@
-export type ThemeId = 'sakura' | 'blue' | 'gold' | 'purple' | 'mint'
+export type ThemeId = 'sakura' | 'blue' | 'gold' | 'purple' | 'mint' | 'custom'
 
 export type Theme = {
   id: ThemeId
@@ -16,7 +16,36 @@ export const THEMES: Theme[] = [
   { id: 'mint', label: 'ミント', main: '#8ec7bb', accent: '#bfe0d8', title: '#b3ded3' },
 ]
 
-export function getTheme(id: ThemeId): Theme {
+function clampByte(n: number) {
+  return Math.min(255, Math.max(0, Math.round(n)))
+}
+
+function mixHex(hex: string, toward: number, amount: number): string {
+  const h = hex.replace('#', '')
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
+  const r = Number.parseInt(full.slice(0, 2), 16)
+  const g = Number.parseInt(full.slice(2, 4), 16)
+  const b = Number.parseInt(full.slice(4, 6), 16)
+  const nr = clampByte(r + (toward - r) * amount)
+  const ng = clampByte(g + (toward - g) * amount)
+  const nb = clampByte(b + (toward - b) * amount)
+  return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`
+}
+
+/** 1色からメイン／アクセント／タイトル色を作る */
+export function themeFromColor(main: string): Theme {
+  const safe = /^#[0-9a-fA-F]{6}$/.test(main) ? main : '#e39bae'
+  return {
+    id: 'custom',
+    label: 'カスタム',
+    main: safe,
+    accent: mixHex(safe, 255, 0.35),
+    title: mixHex(safe, 255, 0.22),
+  }
+}
+
+export function getTheme(id: ThemeId, customColor = '#e39bae'): Theme {
+  if (id === 'custom') return themeFromColor(customColor)
   return THEMES.find((t) => t.id === id) ?? THEMES[0]
 }
 
