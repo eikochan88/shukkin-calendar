@@ -1,4 +1,5 @@
 import { fillTextSpaced, hexToRgba } from './canvas-utils'
+import type { PhotoFit } from './storage'
 import {
   CANVAS_H,
   CANVAS_W,
@@ -13,14 +14,22 @@ export type DrawOptions = {
   theme: Theme
   year: number
   month: number // 1-12
-  monthTitle: string // e.g. SEPTEMBER（自由入力可）
+  monthTitle: string
   workDays: Set<number>
   name: string
   shop: string
-  calendarHeight: number // 0-1
-  darkness: number // 0-0.6
-  photoOffset: number // 0-1 (vertical)
+  calendarHeight: number
+  darkness: number
+  photoOffset: number
   photo: HTMLImageElement | null
+  centerTextSize: number
+  photoBgColor: string
+  photoFit: PhotoFit
+  photoBrightness: number
+  photoContrast: number
+  photoSaturate: number
+  photoBlur: number
+  photoZoom: number
 }
 
 export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
@@ -36,20 +45,53 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
     darkness,
     photoOffset,
     photo,
+    centerTextSize,
+    photoBgColor,
+    photoFit,
+    photoBrightness,
+    photoContrast,
+    photoSaturate,
+    photoBlur,
+    photoZoom,
   } = opts
 
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H)
 
-  // Background
+  // Background + photo
   if (photo) {
-    const scale = Math.max(CANVAS_W / photo.naturalWidth, CANVAS_H / photo.naturalHeight)
-    const dw = photo.naturalWidth * scale
-    const dh = photo.naturalHeight * scale
-    const dx = (CANVAS_W - dw) / 2
-    // photoOffset 0 = top-aligned, 1 = bottom-aligned
-    const maxDy = Math.min(0, CANVAS_H - dh)
-    const dy = maxDy * photoOffset
-    ctx.drawImage(photo, dx, dy, dw, dh)
+    ctx.fillStyle = photoBgColor
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
+
+    ctx.save()
+    ctx.filter = [
+      `brightness(${photoBrightness})`,
+      `contrast(${photoContrast})`,
+      `saturate(${photoSaturate})`,
+      photoBlur > 0 ? `blur(${photoBlur}px)` : null,
+    ]
+      .filter(Boolean)
+      .join(' ')
+
+    if (photoFit === 'contain') {
+      const scale =
+        Math.min(CANVAS_W / photo.naturalWidth, CANVAS_H / photo.naturalHeight) * photoZoom
+      const dw = photo.naturalWidth * scale
+      const dh = photo.naturalHeight * scale
+      const dx = (CANVAS_W - dw) / 2
+      const maxDy = CANVAS_H - dh
+      const dy = maxDy * photoOffset
+      ctx.drawImage(photo, dx, dy, dw, dh)
+    } else {
+      const scale =
+        Math.max(CANVAS_W / photo.naturalWidth, CANVAS_H / photo.naturalHeight) * photoZoom
+      const dw = photo.naturalWidth * scale
+      const dh = photo.naturalHeight * scale
+      const dx = (CANVAS_W - dw) / 2
+      const maxDy = Math.min(0, CANVAS_H - dh)
+      const dy = maxDy * photoOffset
+      ctx.drawImage(photo, dx, dy, dw, dh)
+    }
+    ctx.restore()
   } else {
     const grad = ctx.createLinearGradient(0, 0, CANVAS_W, CANVAS_H)
     grad.addColorStop(0, theme.main)
@@ -59,13 +101,12 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
   }
 
-  // Darkness overlay
   if (darkness > 0) {
     ctx.fillStyle = `rgba(0, 0, 0, ${darkness})`
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
   }
 
-  // Large month number (top-left)
+  // Large month number
   const monthStr = String(month).padStart(2, '0')
   ctx.save()
   ctx.font = `300 260px ${SERIF}`
@@ -79,44 +120,47 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
   ctx.fillText(monthStr, 56, 300)
   ctx.restore()
 
-  // Calendar block
   const blockY = CANVAS_H * calendarHeight
+  const s = centerTextSize
+  const titleSize = 66 * s
+  const calGap = 74 * s
+  const subSize = 26 * s
+  const subGap = 50 * s
+  const letterGap = 8 * s
 
-  // Month name (e.g. MARCH) — 自由入力の英語タイトル
   const titleText = monthTitle.trim() || MONTH_NAMES[month - 1]
-  const textColor = theme.text || '#ffffff'
+  const centerColor = theme.centerText || theme.text || '#ffffff'
+
   ctx.save()
-  ctx.font = `400 66px ${SERIF}`
-  ctx.fillStyle = textColor
+  ctx.font = `400 ${titleSize}px ${SERIF}`
+  ctx.fillStyle = centerColor
   ctx.textBaseline = 'alphabetic'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
   ctx.shadowBlur = 10
-  fillTextSpaced(ctx, titleText, CANVAS_W / 2, blockY, 8, 'center')
+  fillTextSpaced(ctx, titleText, CANVAS_W / 2, blockY, letterGap, 'center')
   ctx.restore()
 
-  // CALENDAR
   ctx.save()
-  ctx.font = `400 66px ${SERIF}`
-  ctx.fillStyle = textColor
+  ctx.font = `400 ${titleSize}px ${SERIF}`
+  ctx.fillStyle = centerColor
   ctx.textBaseline = 'alphabetic'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
   ctx.shadowBlur = 10
-  fillTextSpaced(ctx, 'CALENDAR', CANVAS_W / 2, blockY + 74, 8, 'center')
+  fillTextSpaced(ctx, 'CALENDAR', CANVAS_W / 2, blockY + calGap, letterGap, 'center')
   ctx.restore()
 
-  // 出勤カレンダー
   ctx.save()
-  ctx.font = `500 26px ${SANS}`
-  ctx.fillStyle = textColor
+  ctx.font = `500 ${subSize}px ${SANS}`
+  ctx.fillStyle = centerColor
   ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.4)'
   ctx.shadowBlur = 8
-  ctx.fillText('出勤カレンダー', CANVAS_W / 2, blockY + 74 + 50)
+  ctx.fillText('出勤カレンダー', CANVAS_W / 2, blockY + calGap + subGap)
   ctx.restore()
 
-  // Weekday pills
-  const pillY = blockY + 74 + 50 + 36
+  const textColor = theme.text || '#ffffff'
+  const pillY = blockY + calGap + subGap + 36 * s
   const sideMargin = 66
   const pillW = 92
   const pillH = 34
@@ -130,7 +174,7 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
   for (let i = 0; i < 7; i++) {
     const px = sideMargin + i * (pillW + gap)
     const isWeekend = i === 0 || i === 6
-    ctx.fillStyle = isWeekend ? theme.accent : theme.main
+    ctx.fillStyle = isWeekend ? theme.weekend : theme.weekday
     roundRect(ctx, px, pillY, pillW, pillH, 8)
     ctx.fill()
     ctx.fillStyle = textColor
@@ -138,7 +182,6 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
   }
   ctx.restore()
 
-  // Date grid
   const firstDow = new Date(year, month - 1, 1).getDay()
   const daysInMonth = new Date(year, month, 0).getDate()
   const rowH = 94
@@ -171,7 +214,6 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
   }
   ctx.restore()
 
-  // Name / shop
   const rows = Math.ceil((firstDow + daysInMonth) / 7)
   const footerY = gridTop + rows * rowH + 20
 

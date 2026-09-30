@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { drawCalendar } from './lib/draw'
 import { saveCanvasImage } from './lib/save'
-import { loadPrefs, savePrefs } from './lib/storage'
+import { loadPrefs, savePrefs, type PhotoFit } from './lib/storage'
 import {
   CANVAS_H,
   CANVAS_W,
@@ -16,6 +16,7 @@ import {
   THEMES,
   colorsFromMain,
   normalizeHex,
+  pickThemeColors,
   themeFromColors,
   type ThemeColors,
   type ThemeId,
@@ -47,6 +48,14 @@ function App() {
   const [calendarHeight, setCalendarHeight] = useState(prefs.calendarHeight)
   const [darkness, setDarkness] = useState(prefs.darkness)
   const [photoOffset, setPhotoOffset] = useState(prefs.photoOffset)
+  const [centerTextSize, setCenterTextSize] = useState(prefs.centerTextSize)
+  const [photoBgColor, setPhotoBgColor] = useState(prefs.photoBgColor)
+  const [photoFit, setPhotoFit] = useState<PhotoFit>(prefs.photoFit)
+  const [photoBrightness, setPhotoBrightness] = useState(prefs.photoBrightness)
+  const [photoContrast, setPhotoContrast] = useState(prefs.photoContrast)
+  const [photoSaturate, setPhotoSaturate] = useState(prefs.photoSaturate)
+  const [photoBlur, setPhotoBlur] = useState(prefs.photoBlur)
+  const [photoZoom, setPhotoZoom] = useState(prefs.photoZoom)
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [monthTitle, setMonthTitle] = useState<string>(
@@ -74,12 +83,7 @@ function App() {
     const preset = THEMES.find((t) => t.id === id)
     if (!preset) return
     setThemeId(id)
-    setColors({
-      main: preset.main,
-      accent: preset.accent,
-      title: preset.title,
-      text: preset.text,
-    })
+    setColors(pickThemeColors(preset))
   }
 
   const updateColor = (key: keyof ThemeColors, value: string) => {
@@ -92,7 +96,18 @@ function App() {
     setColors(colorsFromMain(value))
   }
 
-  // Persist prefs (not photo, not work days)
+  const resetPhotoEdit = () => {
+    setPhotoBgColor('#1a1520')
+    setPhotoFit('cover')
+    setPhotoBrightness(1)
+    setPhotoContrast(1)
+    setPhotoSaturate(1)
+    setPhotoBlur(0)
+    setPhotoZoom(1)
+    setPhotoOffset(0.5)
+    setDarkness(0.25)
+  }
+
   useEffect(() => {
     savePrefs({
       themeId,
@@ -102,16 +117,38 @@ function App() {
       calendarHeight,
       darkness,
       photoOffset,
+      centerTextSize,
+      photoBgColor,
+      photoFit,
+      photoBrightness,
+      photoContrast,
+      photoSaturate,
+      photoBlur,
+      photoZoom,
     })
-  }, [themeId, colors, name, shop, calendarHeight, darkness, photoOffset])
+  }, [
+    themeId,
+    colors,
+    name,
+    shop,
+    calendarHeight,
+    darkness,
+    photoOffset,
+    centerTextSize,
+    photoBgColor,
+    photoFit,
+    photoBrightness,
+    photoContrast,
+    photoSaturate,
+    photoBlur,
+    photoZoom,
+  ])
 
-  // Reset work days + English month title when year/month changes
   useEffect(() => {
     setWorkDays(new Set())
     setMonthTitle(MONTH_NAMES[month - 1])
   }, [year, month])
 
-  // Draw preview
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -129,6 +166,14 @@ function App() {
       darkness,
       photoOffset,
       photo,
+      centerTextSize,
+      photoBgColor,
+      photoFit,
+      photoBrightness,
+      photoContrast,
+      photoSaturate,
+      photoBlur,
+      photoZoom,
     })
   }, [
     theme,
@@ -142,30 +187,40 @@ function App() {
     darkness,
     photoOffset,
     photo,
+    centerTextSize,
+    photoBgColor,
+    photoFit,
+    photoBrightness,
+    photoContrast,
+    photoSaturate,
+    photoBlur,
+    photoZoom,
   ])
 
-  // Cleanup object URLs
   useEffect(() => {
     return () => {
       if (photoUrl) URL.revokeObjectURL(photoUrl)
     }
   }, [photoUrl])
 
-  const onPickPhoto = useCallback((file: File | undefined) => {
-    if (!file) return
-    if (photoUrl) URL.revokeObjectURL(photoUrl)
-    const url = URL.createObjectURL(file)
-    const img = new Image()
-    img.onload = () => {
-      setPhoto(img)
-      setPhotoUrl(url)
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      setErrorMsg('写真の読み込みに失敗しました')
-    }
-    img.src = url
-  }, [photoUrl])
+  const onPickPhoto = useCallback(
+    (file: File | undefined) => {
+      if (!file) return
+      if (photoUrl) URL.revokeObjectURL(photoUrl)
+      const url = URL.createObjectURL(file)
+      const img = new Image()
+      img.onload = () => {
+        setPhoto(img)
+        setPhotoUrl(url)
+      }
+      img.onerror = () => {
+        URL.revokeObjectURL(url)
+        setErrorMsg('写真の読み込みに失敗しました')
+      }
+      img.src = url
+    },
+    [photoUrl],
+  )
 
   const clearPhoto = () => {
     if (photoUrl) URL.revokeObjectURL(photoUrl)
@@ -310,6 +365,22 @@ function App() {
         </label>
       </Panel>
 
+      <Panel title="真ん中の文字">
+        <ColorRow
+          label="文字色"
+          hint="SEPTEMBERなど"
+          value={colors.centerText}
+          onChange={(v) => updateColor('centerText', v)}
+        />
+        <Slider
+          label={`大きさ ${Math.round(centerTextSize * 100)}%`}
+          value={centerTextSize * 100}
+          min={60}
+          max={160}
+          onChange={(v) => setCenterTextSize(v / 100)}
+        />
+      </Panel>
+
       <Panel title="写真">
         <div className="flex gap-2">
           <button
@@ -335,21 +406,106 @@ function App() {
             onChange={(e) => onPickPhoto(e.target.files?.[0])}
           />
         </div>
-        <Slider
-          label="上下位置"
-          value={photoOffset * 100}
-          min={0}
-          max={100}
-          onChange={(v) => setPhotoOffset(v / 100)}
-          disabled={!photo}
-        />
-        <Slider
-          label={`暗さ ${Math.round(darkness * 100)}%`}
-          value={darkness * 100}
-          min={0}
-          max={60}
-          onChange={(v) => setDarkness(v / 100)}
-        />
+
+        {photo ? (
+          <div className="mt-3 space-y-1 border-t border-[#2f2d3a] pt-3">
+            <p className="mb-2 text-[12px] text-[#9b97a8]">写真の背景・加工</p>
+            <ColorRow
+              label="背景色"
+              hint="写真の後ろ"
+              value={photoBgColor}
+              onChange={setPhotoBgColor}
+            />
+            <div className="mb-2 flex gap-2">
+              <button
+                type="button"
+                className="min-h-11 flex-1 rounded-lg border text-[14px]"
+                style={{
+                  borderColor: photoFit === 'cover' ? '#efedf5' : '#2f2d3a',
+                  background: photoFit === 'cover' ? '#2a2834' : '#14131a',
+                }}
+                onClick={() => setPhotoFit('cover')}
+              >
+                全体に合わせる
+              </button>
+              <button
+                type="button"
+                className="min-h-11 flex-1 rounded-lg border text-[14px]"
+                style={{
+                  borderColor: photoFit === 'contain' ? '#efedf5' : '#2f2d3a',
+                  background: photoFit === 'contain' ? '#2a2834' : '#14131a',
+                }}
+                onClick={() => setPhotoFit('contain')}
+              >
+                背景を見せる
+              </button>
+            </div>
+            <Slider
+              label="上下位置"
+              value={photoOffset * 100}
+              min={0}
+              max={100}
+              onChange={(v) => setPhotoOffset(v / 100)}
+            />
+            <Slider
+              label={`ズーム ${Math.round(photoZoom * 100)}%`}
+              value={photoZoom * 100}
+              min={100}
+              max={220}
+              onChange={(v) => setPhotoZoom(v / 100)}
+            />
+            <Slider
+              label={`明るさ ${Math.round(photoBrightness * 100)}%`}
+              value={photoBrightness * 100}
+              min={40}
+              max={180}
+              onChange={(v) => setPhotoBrightness(v / 100)}
+            />
+            <Slider
+              label={`コントラスト ${Math.round(photoContrast * 100)}%`}
+              value={photoContrast * 100}
+              min={40}
+              max={180}
+              onChange={(v) => setPhotoContrast(v / 100)}
+            />
+            <Slider
+              label={`彩度 ${Math.round(photoSaturate * 100)}%`}
+              value={photoSaturate * 100}
+              min={0}
+              max={250}
+              onChange={(v) => setPhotoSaturate(v / 100)}
+            />
+            <Slider
+              label={`ぼかし ${photoBlur.toFixed(1)}`}
+              value={photoBlur * 10}
+              min={0}
+              max={120}
+              onChange={(v) => setPhotoBlur(v / 10)}
+            />
+            <Slider
+              label={`暗さオーバーレイ ${Math.round(darkness * 100)}%`}
+              value={darkness * 100}
+              min={0}
+              max={60}
+              onChange={(v) => setDarkness(v / 100)}
+            />
+            <button
+              type="button"
+              className="mt-2 min-h-11 w-full rounded-lg border border-[#2f2d3a] bg-[#14131a] text-[14px]"
+              onClick={resetPhotoEdit}
+            >
+              写真加工をリセット
+            </button>
+          </div>
+        ) : (
+          <Slider
+            label={`暗さ ${Math.round(darkness * 100)}%`}
+            value={darkness * 100}
+            min={0}
+            max={60}
+            onChange={(v) => setDarkness(v / 100)}
+          />
+        )}
       </Panel>
 
       <Panel title="出勤日">
@@ -456,16 +612,22 @@ function App() {
         </label>
 
         <ColorRow
-          label="メイン色"
-          hint="出勤丸・平日"
+          label="出勤丸"
+          hint="選んだ日付"
           value={colors.main}
           onChange={(v) => updateColor('main', v)}
         />
         <ColorRow
-          label="アクセント"
-          hint="土日"
-          value={colors.accent}
-          onChange={(v) => updateColor('accent', v)}
+          label="曜日（平日）"
+          hint="月〜金"
+          value={colors.weekday}
+          onChange={(v) => updateColor('weekday', v)}
+        />
+        <ColorRow
+          label="曜日（土日）"
+          hint="土・日"
+          value={colors.weekend}
+          onChange={(v) => updateColor('weekend', v)}
         />
         <ColorRow
           label="数字の色"
@@ -474,8 +636,8 @@ function App() {
           onChange={(v) => updateColor('title', v)}
         />
         <ColorRow
-          label="文字色"
-          hint="月名・日付など"
+          label="日付の文字"
+          hint="カレンダー数字"
           value={colors.text}
           onChange={(v) => updateColor('text', v)}
         />

@@ -5,6 +5,9 @@ export type ThemeColors = {
   accent: string
   title: string
   text: string
+  centerText: string
+  weekday: string
+  weekend: string
 }
 
 export type Theme = ThemeColors & {
@@ -13,11 +16,61 @@ export type Theme = ThemeColors & {
 }
 
 export const THEMES: Theme[] = [
-  { id: 'sakura', label: 'サクラ', main: '#e39bae', accent: '#9cb4e4', title: '#a9c0ec', text: '#ffffff' },
-  { id: 'blue', label: 'ブルー', main: '#8fb0dd', accent: '#c9d6ec', title: '#b8cbe9', text: '#ffffff' },
-  { id: 'gold', label: 'ゴールド', main: '#c9a86a', accent: '#e6d5ae', title: '#e0cb9c', text: '#ffffff' },
-  { id: 'purple', label: 'パープル', main: '#a487c9', accent: '#d3b8e6', title: '#cbb2e6', text: '#ffffff' },
-  { id: 'mint', label: 'ミント', main: '#8ec7bb', accent: '#bfe0d8', title: '#b3ded3', text: '#ffffff' },
+  {
+    id: 'sakura',
+    label: 'サクラ',
+    main: '#e39bae',
+    accent: '#9cb4e4',
+    title: '#a9c0ec',
+    text: '#ffffff',
+    centerText: '#ffffff',
+    weekday: '#e39bae',
+    weekend: '#9cb4e4',
+  },
+  {
+    id: 'blue',
+    label: 'ブルー',
+    main: '#8fb0dd',
+    accent: '#c9d6ec',
+    title: '#b8cbe9',
+    text: '#ffffff',
+    centerText: '#ffffff',
+    weekday: '#8fb0dd',
+    weekend: '#c9d6ec',
+  },
+  {
+    id: 'gold',
+    label: 'ゴールド',
+    main: '#c9a86a',
+    accent: '#e6d5ae',
+    title: '#e0cb9c',
+    text: '#ffffff',
+    centerText: '#ffffff',
+    weekday: '#c9a86a',
+    weekend: '#e6d5ae',
+  },
+  {
+    id: 'purple',
+    label: 'パープル',
+    main: '#a487c9',
+    accent: '#d3b8e6',
+    title: '#cbb2e6',
+    text: '#ffffff',
+    centerText: '#ffffff',
+    weekday: '#a487c9',
+    weekend: '#d3b8e6',
+  },
+  {
+    id: 'mint',
+    label: 'ミント',
+    main: '#8ec7bb',
+    accent: '#bfe0d8',
+    title: '#b3ded3',
+    text: '#ffffff',
+    centerText: '#ffffff',
+    weekday: '#8ec7bb',
+    weekend: '#bfe0d8',
+  },
 ]
 
 function clampByte(n: number) {
@@ -47,14 +100,18 @@ export function normalizeHex(input: string, fallback = '#e39bae'): string {
   return fallback
 }
 
-/** 1色からメイン／アクセント／タイトル色を作る */
+/** 1色から全体カラーを作る */
 export function colorsFromMain(main: string): ThemeColors {
   const safe = normalizeHex(main)
+  const accent = mixHex(safe, 255, 0.35)
   return {
     main: safe,
-    accent: mixHex(safe, 255, 0.35),
+    accent,
     title: mixHex(safe, 255, 0.22),
     text: '#ffffff',
+    centerText: '#ffffff',
+    weekday: safe,
+    weekend: accent,
   }
 }
 
@@ -66,11 +123,26 @@ export function themeFromColors(colors: ThemeColors): Theme {
     accent: normalizeHex(colors.accent, '#9cb4e4'),
     title: normalizeHex(colors.title, '#a9c0ec'),
     text: normalizeHex(colors.text, '#ffffff'),
+    centerText: normalizeHex(colors.centerText ?? colors.text, '#ffffff'),
+    weekday: normalizeHex(colors.weekday ?? colors.main, colors.main),
+    weekend: normalizeHex(colors.weekend ?? colors.accent, colors.accent),
   }
 }
 
 export function getTheme(id: ThemeId): Theme {
   return THEMES.find((t) => t.id === id) ?? THEMES[0]
+}
+
+export function pickThemeColors(theme: Theme): ThemeColors {
+  return {
+    main: theme.main,
+    accent: theme.accent,
+    title: theme.title,
+    text: theme.text,
+    centerText: theme.centerText,
+    weekday: theme.weekday,
+    weekend: theme.weekend,
+  }
 }
 
 export const MONTH_NAMES = [
