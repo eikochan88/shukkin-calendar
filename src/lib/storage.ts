@@ -1,10 +1,11 @@
-import type { ThemeId } from './themes'
+import type { ThemeColors, ThemeId } from './themes'
+import { THEMES, colorsFromMain, normalizeHex } from './themes'
 
-const STORAGE_KEY = 'shukkin-calendar-v1'
+const STORAGE_KEY = 'shukkin-calendar-v2'
 
 export type StoredPrefs = {
   themeId: ThemeId
-  customColor: string
+  colors: ThemeColors
   name: string
   shop: string
   calendarHeight: number
@@ -14,7 +15,11 @@ export type StoredPrefs = {
 
 export const DEFAULT_PREFS: StoredPrefs = {
   themeId: 'sakura',
-  customColor: '#e39bae',
+  colors: {
+    main: THEMES[0].main,
+    accent: THEMES[0].accent,
+    title: THEMES[0].title,
+  },
   name: '',
   shop: '',
   calendarHeight: 0.42,
@@ -24,20 +29,44 @@ export const DEFAULT_PREFS: StoredPrefs = {
 
 const THEME_IDS: ThemeId[] = ['sakura', 'blue', 'gold', 'purple', 'mint', 'custom']
 
+function readColors(raw: unknown, fallback: ThemeColors): ThemeColors {
+  if (!raw || typeof raw !== 'object') return { ...fallback }
+  const c = raw as Partial<ThemeColors>
+  return {
+    main: normalizeHex(typeof c.main === 'string' ? c.main : fallback.main, fallback.main),
+    accent: normalizeHex(typeof c.accent === 'string' ? c.accent : fallback.accent, fallback.accent),
+    title: normalizeHex(typeof c.title === 'string' ? c.title : fallback.title, fallback.title),
+  }
+}
+
 export function loadPrefs(): StoredPrefs {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { ...DEFAULT_PREFS }
-    const parsed = JSON.parse(raw) as Partial<StoredPrefs>
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('shukkin-calendar-v1')
+    if (!raw) return { ...DEFAULT_PREFS, colors: { ...DEFAULT_PREFS.colors } }
+    const parsed = JSON.parse(raw) as Partial<StoredPrefs> & { customColor?: string }
     const themeId = THEME_IDS.includes(parsed.themeId as ThemeId)
       ? (parsed.themeId as ThemeId)
       : DEFAULT_PREFS.themeId
+
+    let colors = readColors(parsed.colors, DEFAULT_PREFS.colors)
+
+    if (!parsed.colors && typeof parsed.customColor === 'string') {
+      const preset = THEMES.find((t) => t.id === themeId)
+      if (themeId === 'custom' || !preset) {
+        colors = colorsFromMain(parsed.customColor)
+      } else {
+        colors = { main: preset.main, accent: preset.accent, title: preset.title }
+      }
+    } else if (!parsed.colors && themeId !== 'custom') {
+      const preset = THEMES.find((t) => t.id === themeId)
+      if (preset) {
+        colors = { main: preset.main, accent: preset.accent, title: preset.title }
+      }
+    }
+
     return {
       themeId,
-      customColor:
-        typeof parsed.customColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(parsed.customColor)
-          ? parsed.customColor
-          : DEFAULT_PREFS.customColor,
+      colors,
       name: parsed.name ?? '',
       shop: parsed.shop ?? '',
       calendarHeight: clamp(parsed.calendarHeight ?? DEFAULT_PREFS.calendarHeight, 0.28, 0.62),
@@ -45,7 +74,7 @@ export function loadPrefs(): StoredPrefs {
       photoOffset: clamp(parsed.photoOffset ?? DEFAULT_PREFS.photoOffset, 0, 1),
     }
   } catch {
-    return { ...DEFAULT_PREFS }
+    return { ...DEFAULT_PREFS, colors: { ...DEFAULT_PREFS.colors } }
   }
 }
 

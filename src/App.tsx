@@ -14,8 +14,10 @@ import {
   CANVAS_W,
   MONTH_NAMES,
   THEMES,
-  getTheme,
-  themeFromColor,
+  colorsFromMain,
+  normalizeHex,
+  themeFromColors,
+  type ThemeColors,
   type ThemeId,
 } from './lib/themes'
 
@@ -39,7 +41,7 @@ function App() {
   const now = useMemo(() => new Date(), [])
 
   const [themeId, setThemeId] = useState<ThemeId>(prefs.themeId)
-  const [customColor, setCustomColor] = useState(prefs.customColor)
+  const [colors, setColors] = useState<ThemeColors>(prefs.colors)
   const [name, setName] = useState(prefs.name)
   const [shop, setShop] = useState(prefs.shop)
   const [calendarHeight, setCalendarHeight] = useState(prefs.calendarHeight)
@@ -64,23 +66,39 @@ function App() {
   const fileRef = useRef<HTMLInputElement>(null)
   const saveResultRef = useRef<HTMLElement>(null)
 
-  const theme = getTheme(themeId, customColor)
-  const customPreview = themeFromColor(customColor)
+  const theme = themeFromColors(colors)
   const daysInMonth = new Date(year, month, 0).getDate()
   const firstDow = new Date(year, month - 1, 1).getDay()
+
+  const applyPreset = (id: ThemeId) => {
+    const preset = THEMES.find((t) => t.id === id)
+    if (!preset) return
+    setThemeId(id)
+    setColors({ main: preset.main, accent: preset.accent, title: preset.title })
+  }
+
+  const updateColor = (key: keyof ThemeColors, value: string) => {
+    setThemeId('custom')
+    setColors((prev) => ({ ...prev, [key]: normalizeHex(value, prev[key]) }))
+  }
+
+  const applyOneColor = (value: string) => {
+    setThemeId('custom')
+    setColors(colorsFromMain(value))
+  }
 
   // Persist prefs (not photo, not work days)
   useEffect(() => {
     savePrefs({
       themeId,
-      customColor,
+      colors,
       name,
       shop,
       calendarHeight,
       darkness,
       photoOffset,
     })
-  }, [themeId, customColor, name, shop, calendarHeight, darkness, photoOffset])
+  }, [themeId, colors, name, shop, calendarHeight, darkness, photoOffset])
 
   // Reset work days + English month title when year/month changes
   useEffect(() => {
@@ -401,7 +419,8 @@ function App() {
       </Panel>
 
       <Panel title="全体の色">
-        <div className="flex flex-wrap justify-center gap-3 py-1">
+        <p className="mb-3 text-[12px] text-[#9b97a8]">プリセット、または下で好きな色に変更</p>
+        <div className="mb-4 flex flex-wrap justify-center gap-3 py-1">
           {THEMES.map((t) => (
             <button
               key={t.id}
@@ -409,7 +428,7 @@ function App() {
               title={t.label}
               aria-label={t.label}
               aria-pressed={themeId === t.id}
-              onClick={() => setThemeId(t.id)}
+              onClick={() => applyPreset(t.id)}
               className="h-12 w-12 rounded-full border-2 transition-transform active:scale-95"
               style={{
                 background: `linear-gradient(135deg, ${t.main}, ${t.accent})`,
@@ -418,36 +437,37 @@ function App() {
               }}
             />
           ))}
-          <button
-            type="button"
-            title="カスタム"
-            aria-label="カスタム色"
-            aria-pressed={themeId === 'custom'}
-            onClick={() => setThemeId('custom')}
-            className="flex h-12 w-12 items-center justify-center rounded-full border-2 text-[11px] font-medium text-[#efedf5] transition-transform active:scale-95"
-            style={{
-              background: `linear-gradient(135deg, ${customPreview.main}, ${customPreview.accent})`,
-              borderColor: themeId === 'custom' ? '#efedf5' : '#2f2d3a',
-              boxShadow:
-                themeId === 'custom' ? `0 0 0 3px ${customColor}55` : undefined,
-            }}
-          >
-            自由
-          </button>
         </div>
-        <label className="mt-3 flex min-h-11 items-center gap-3">
-          <span className="text-[13px] text-[#9b97a8]">好きな色</span>
+
+        <label className="mb-4 flex min-h-11 items-center gap-3 rounded-lg border border-[#2f2d3a] bg-[#14131a] px-3 py-2">
+          <span className="w-24 shrink-0 text-[13px] text-[#9b97a8]">1色で決める</span>
           <input
             type="color"
-            value={customColor}
-            onChange={(e) => {
-              setCustomColor(e.target.value)
-              setThemeId('custom')
-            }}
-            className="h-11 w-16 cursor-pointer rounded-lg border border-[#2f2d3a] bg-[#14131a] p-1"
+            value={colors.main}
+            onChange={(e) => applyOneColor(e.target.value)}
+            className="h-11 w-14 cursor-pointer rounded-md border border-[#2f2d3a] bg-transparent p-1"
           />
-          <span className="font-mono text-[13px] text-[#cfcadb]">{customColor}</span>
+          <span className="text-[12px] text-[#cfcadb]">メイン色から全体を自動調整</span>
         </label>
+
+        <ColorRow
+          label="メイン色"
+          hint="出勤丸・平日"
+          value={colors.main}
+          onChange={(v) => updateColor('main', v)}
+        />
+        <ColorRow
+          label="アクセント"
+          hint="土日"
+          value={colors.accent}
+          onChange={(v) => updateColor('accent', v)}
+        />
+        <ColorRow
+          label="数字の色"
+          hint="大きな月"
+          value={colors.title}
+          onChange={(v) => updateColor('title', v)}
+        />
       </Panel>
 
       <Panel title="カレンダーの高さ">
@@ -512,6 +532,55 @@ function App() {
           </a>
         </section>
       )}
+    </div>
+  )
+}
+
+function ColorRow({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string
+  hint: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  const [text, setText] = useState(value)
+  useEffect(() => {
+    setText(value)
+  }, [value])
+
+  return (
+    <div className="mb-2 flex min-h-11 items-center gap-2">
+      <div className="w-24 shrink-0">
+        <div className="text-[13px] text-[#cfcadb]">{label}</div>
+        <div className="text-[11px] text-[#9b97a8]">{hint}</div>
+      </div>
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 w-14 shrink-0 cursor-pointer rounded-md border border-[#2f2d3a] bg-[#14131a] p-1"
+        aria-label={label}
+      />
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => onChange(normalizeHex(text, value))}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            onChange(normalizeHex(text, value))
+            ;(e.target as HTMLInputElement).blur()
+          }
+        }}
+        className="min-h-11 min-w-0 flex-1 rounded-lg border border-[#2f2d3a] bg-[#14131a] px-3 font-mono text-[13px] uppercase text-[#efedf5] outline-none"
+        spellCheck={false}
+        inputMode="text"
+        autoCapitalize="characters"
+      />
     </div>
   )
 }

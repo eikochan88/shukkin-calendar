@@ -1,11 +1,14 @@
 export type ThemeId = 'sakura' | 'blue' | 'gold' | 'purple' | 'mint' | 'custom'
 
-export type Theme = {
-  id: ThemeId
-  label: string
+export type ThemeColors = {
   main: string
   accent: string
   title: string
+}
+
+export type Theme = ThemeColors & {
+  id: ThemeId
+  label: string
 }
 
 export const THEMES: Theme[] = [
@@ -32,20 +35,38 @@ function mixHex(hex: string, toward: number, amount: number): string {
   return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`
 }
 
+export function normalizeHex(input: string, fallback = '#e39bae'): string {
+  const raw = input.trim()
+  if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toLowerCase()
+  if (/^[0-9a-fA-F]{6}$/.test(raw)) return `#${raw.toLowerCase()}`
+  if (/^#[0-9a-fA-F]{3}$/.test(raw)) {
+    const h = raw.slice(1)
+    return `#${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}`.toLowerCase()
+  }
+  return fallback
+}
+
 /** 1色からメイン／アクセント／タイトル色を作る */
-export function themeFromColor(main: string): Theme {
-  const safe = /^#[0-9a-fA-F]{6}$/.test(main) ? main : '#e39bae'
+export function colorsFromMain(main: string): ThemeColors {
+  const safe = normalizeHex(main)
   return {
-    id: 'custom',
-    label: 'カスタム',
     main: safe,
     accent: mixHex(safe, 255, 0.35),
     title: mixHex(safe, 255, 0.22),
   }
 }
 
-export function getTheme(id: ThemeId, customColor = '#e39bae'): Theme {
-  if (id === 'custom') return themeFromColor(customColor)
+export function themeFromColors(colors: ThemeColors): Theme {
+  return {
+    id: 'custom',
+    label: 'カスタム',
+    main: normalizeHex(colors.main),
+    accent: normalizeHex(colors.accent, '#9cb4e4'),
+    title: normalizeHex(colors.title, '#a9c0ec'),
+  }
+}
+
+export function getTheme(id: ThemeId): Theme {
   return THEMES.find((t) => t.id === id) ?? THEMES[0]
 }
 
