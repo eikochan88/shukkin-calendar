@@ -70,3 +70,12 @@ select,
 input[type="text"] {
   font-size: 16px; /* iOS zoom prevention */
 }
+
+/* iOS: 長押しメニューを必ず出せるよう明示 */
+img.saveable {
+  -webkit-touch-callout: default;
+  -webkit-user-select: auto;
+  user-select: auto;
+  pointer-events: auto;
+  touch-action: manipulation;
+}

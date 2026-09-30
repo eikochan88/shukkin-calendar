@@ -47,9 +47,11 @@ function App() {
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [saveImageUrl, setSaveImageUrl] = useState<string | null>(null)
+  const insecure = typeof window !== 'undefined' && !window.isSecureContext
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const saveResultRef = useRef<HTMLElement>(null)
 
   const theme = getTheme(themeId)
   const daysInMonth = new Date(year, month, 0).getDate()
@@ -148,20 +150,18 @@ function App() {
     setSaving(true)
     setErrorMsg(null)
     setStatusMsg(null)
-    setSaveImageUrl(null)
     try {
       const result = await saveCanvasImage(canvas)
-      if (result.error && result.method !== 'image' && result.method !== 'download' && result.method !== 'share') {
-        setErrorMsg(result.error)
-      } else if (result.error) {
-        // Non-fatal: previous method failed but we recovered
-        setErrorMsg(result.error)
-      }
-      if (result.message) setStatusMsg(result.message)
+      // 共有成功時も含め、常に長押し用画像を出す（失敗時の保険）
       if (result.dataUrl) setSaveImageUrl(result.dataUrl)
+      if (result.message) setStatusMsg(result.message)
+      if (result.error) setErrorMsg(result.error)
       if (result.method === 'none') {
         setErrorMsg(result.error ?? '保存に失敗しました')
       }
+      requestAnimationFrame(() => {
+        saveResultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : String(err))
     } finally {
@@ -384,6 +384,12 @@ function App() {
         />
       </Panel>
 
+      {insecure && (
+        <p className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-100">
+          いまはHTTP接続です。共有シートは使えません。保存ボタン後に出る画像を長押し →「写真に追加」で保存してください（本番のHTTPSでは共有シートが使えます）。
+        </p>
+      )}
+
       {/* Save */}
       <button
         type="button"
@@ -401,24 +407,30 @@ function App() {
         <p className="mt-3 text-center text-[14px] text-[#cfcadb]">{statusMsg}</p>
       )}
       {errorMsg && (
-        <p className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[13px] text-red-200">
+        <p className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-100">
           {errorMsg}
         </p>
       )}
 
       {saveImageUrl && (
-        <section className="mt-5 rounded-xl border border-[#2f2d3a] bg-[#1d1c25] p-4">
-          <p className="mb-3 text-center text-[14px] font-medium text-[#efedf5]">
-            長押しして「写真に追加」
+        <section
+          ref={saveResultRef}
+          className="mt-5 rounded-xl border-2 border-[#efedf5]/30 bg-[#1d1c25] p-4"
+        >
+          <p className="mb-1 text-center text-[16px] font-semibold text-[#efedf5]">
+            この画像を長押し
+          </p>
+          <p className="mb-3 text-center text-[13px] text-[#cfcadb]">
+            メニューから「写真に追加」を選ぶとカメラロールに保存されます
           </p>
           <img
             src={saveImageUrl}
-            alt="生成した出勤カレンダー"
-            className="mx-auto w-full max-w-[340px] rounded-lg"
+            alt="生成した出勤カレンダー（長押しで保存）"
+            className="saveable mx-auto block w-full max-w-[340px] rounded-lg"
           />
           <a
             href={saveImageUrl}
-            download="calendar.png"
+            download="calendar.jpg"
             className="mt-3 flex min-h-11 items-center justify-center rounded-lg border border-[#2f2d3a] bg-[#14131a] text-[14px]"
           >
             ダウンロード（PC向け）
