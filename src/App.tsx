@@ -74,7 +74,12 @@ function App() {
     const preset = THEMES.find((t) => t.id === id)
     if (!preset) return
     setThemeId(id)
-    setColors({ main: preset.main, accent: preset.accent, title: preset.title })
+    setColors({
+      main: preset.main,
+      accent: preset.accent,
+      title: preset.title,
+      text: preset.text,
+    })
   }
 
   const updateColor = (key: keyof ThemeColors, value: string) => {
@@ -467,6 +472,12 @@ function App() {
           hint="大きな月"
           value={colors.title}
           onChange={(v) => updateColor('title', v)}
+        />
+        <ColorRow
+          label="文字色"
+          hint="月名・日付など"
+          value={colors.text}
+          onChange={(v) => updateColor('text', v)}
         />
       </Panel>
 

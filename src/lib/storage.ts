@@ -19,6 +19,7 @@ export const DEFAULT_PREFS: StoredPrefs = {
     main: THEMES[0].main,
     accent: THEMES[0].accent,
     title: THEMES[0].title,
+    text: THEMES[0].text,
   },
   name: '',
   shop: '',
@@ -36,6 +37,7 @@ function readColors(raw: unknown, fallback: ThemeColors): ThemeColors {
     main: normalizeHex(typeof c.main === 'string' ? c.main : fallback.main, fallback.main),
     accent: normalizeHex(typeof c.accent === 'string' ? c.accent : fallback.accent, fallback.accent),
     title: normalizeHex(typeof c.title === 'string' ? c.title : fallback.title, fallback.title),
+    text: normalizeHex(typeof c.text === 'string' ? c.text : fallback.text, fallback.text),
   }
 }
 
@@ -55,12 +57,22 @@ export function loadPrefs(): StoredPrefs {
       if (themeId === 'custom' || !preset) {
         colors = colorsFromMain(parsed.customColor)
       } else {
-        colors = { main: preset.main, accent: preset.accent, title: preset.title }
+        colors = {
+          main: preset.main,
+          accent: preset.accent,
+          title: preset.title,
+          text: preset.text,
+        }
       }
     } else if (!parsed.colors && themeId !== 'custom') {
       const preset = THEMES.find((t) => t.id === themeId)
       if (preset) {
-        colors = { main: preset.main, accent: preset.accent, title: preset.title }
+        colors = {
+          main: preset.main,
+          accent: preset.accent,
+          title: preset.title,
+          text: preset.text,
+        }
       }
     }
 

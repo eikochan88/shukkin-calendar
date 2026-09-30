@@ -4,6 +4,7 @@ export type ThemeColors = {
   main: string
   accent: string
   title: string
+  text: string
 }
 
 export type Theme = ThemeColors & {
@@ -12,11 +13,11 @@ export type Theme = ThemeColors & {
 }
 
 export const THEMES: Theme[] = [
-  { id: 'sakura', label: 'サクラ', main: '#e39bae', accent: '#9cb4e4', title: '#a9c0ec' },
-  { id: 'blue', label: 'ブルー', main: '#8fb0dd', accent: '#c9d6ec', title: '#b8cbe9' },
-  { id: 'gold', label: 'ゴールド', main: '#c9a86a', accent: '#e6d5ae', title: '#e0cb9c' },
-  { id: 'purple', label: 'パープル', main: '#a487c9', accent: '#d3b8e6', title: '#cbb2e6' },
-  { id: 'mint', label: 'ミント', main: '#8ec7bb', accent: '#bfe0d8', title: '#b3ded3' },
+  { id: 'sakura', label: 'サクラ', main: '#e39bae', accent: '#9cb4e4', title: '#a9c0ec', text: '#ffffff' },
+  { id: 'blue', label: 'ブルー', main: '#8fb0dd', accent: '#c9d6ec', title: '#b8cbe9', text: '#ffffff' },
+  { id: 'gold', label: 'ゴールド', main: '#c9a86a', accent: '#e6d5ae', title: '#e0cb9c', text: '#ffffff' },
+  { id: 'purple', label: 'パープル', main: '#a487c9', accent: '#d3b8e6', title: '#cbb2e6', text: '#ffffff' },
+  { id: 'mint', label: 'ミント', main: '#8ec7bb', accent: '#bfe0d8', title: '#b3ded3', text: '#ffffff' },
 ]
 
 function clampByte(n: number) {
@@ -53,6 +54,7 @@ export function colorsFromMain(main: string): ThemeColors {
     main: safe,
     accent: mixHex(safe, 255, 0.35),
     title: mixHex(safe, 255, 0.22),
+    text: '#ffffff',
   }
 }
 
@@ -63,6 +65,7 @@ export function themeFromColors(colors: ThemeColors): Theme {
     main: normalizeHex(colors.main),
     accent: normalizeHex(colors.accent, '#9cb4e4'),
     title: normalizeHex(colors.title, '#a9c0ec'),
+    text: normalizeHex(colors.text, '#ffffff'),
   }
 }
 

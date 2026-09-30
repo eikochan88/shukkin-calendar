@@ -84,9 +84,10 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
 
   // Month name (e.g. MARCH) — 自由入力の英語タイトル
   const titleText = monthTitle.trim() || MONTH_NAMES[month - 1]
+  const textColor = theme.text || '#ffffff'
   ctx.save()
   ctx.font = `400 66px ${SERIF}`
-  ctx.fillStyle = '#ffffff'
+  ctx.fillStyle = textColor
   ctx.textBaseline = 'alphabetic'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
   ctx.shadowBlur = 10
@@ -96,7 +97,7 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
   // CALENDAR
   ctx.save()
   ctx.font = `400 66px ${SERIF}`
-  ctx.fillStyle = '#ffffff'
+  ctx.fillStyle = textColor
   ctx.textBaseline = 'alphabetic'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
   ctx.shadowBlur = 10
@@ -106,7 +107,7 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
   // 出勤カレンダー
   ctx.save()
   ctx.font = `500 26px ${SANS}`
-  ctx.fillStyle = '#ffffff'
+  ctx.fillStyle = textColor
   ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.4)'
@@ -132,7 +133,7 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
     ctx.fillStyle = isWeekend ? theme.accent : theme.main
     roundRect(ctx, px, pillY, pillW, pillH, 8)
     ctx.fill()
-    ctx.fillStyle = '#ffffff'
+    ctx.fillStyle = textColor
     ctx.fillText(WEEKDAYS[i], px + pillW / 2, pillY + pillH / 2 + 1)
   }
   ctx.restore()
@@ -161,10 +162,10 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
       ctx.arc(cx, cy, 36, 0, Math.PI * 2)
       ctx.fillStyle = hexToRgba(theme.main, 0.92)
       ctx.fill()
-      ctx.fillStyle = '#ffffff'
+      ctx.fillStyle = textColor
       ctx.fillText(String(day), cx, cy + 1)
     } else {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)'
+      ctx.fillStyle = hexToRgba(textColor, 0.92)
       ctx.fillText(String(day), cx, cy + 1)
     }
   }
@@ -176,7 +177,7 @@ export function drawCalendar(ctx: CanvasRenderingContext2D, opts: DrawOptions) {
 
   ctx.save()
   ctx.font = `400 22px ${SANS}`
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.88)'
+  ctx.fillStyle = hexToRgba(textColor, 0.88)
   ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
   ctx.shadowColor = 'rgba(0, 0, 0, 0.4)'
